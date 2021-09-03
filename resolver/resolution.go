@@ -59,5 +59,3 @@ type DidResolutionReply struct {
 	Metadata           types.DidMetadata  `json:"didDocumentMetadata,omitempty"`
 	ResolutionMetadata ResolutionMetadata `json:"didResolutionMetadata,omitempty"`
 }
-
-

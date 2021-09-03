@@ -13,7 +13,7 @@ The configuration for this resolver are the following:
 		"url": "http://uni-resolver-driver-did-uport:8081/",
 		"testIdentifiers": [
 			"did:cosmos:cash:alice",
-			"did:cosmos:key:cosmos1000000000000000000000000000000000000000000"
+			"did:cosmos:key:cosmos1u7clngyucn867fm2za0s869yvln9aur8zjujxe"
 		]
 	}
 
