@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -22,15 +24,36 @@ const (
 )
 
 var (
-	serverAddr = flag.String("grpc-server", "localhost:9090", "The target grpc server address in the format of host:port")
-	listenAddr = flag.String("listen", "localhost:2109", "The REST server listen address in the format of host:port")
+	serverAddr = flag.String("grpc-server-address", "localhost:9090", "The target grpc server address in the format of host:port")
+	listenAddr = flag.String("listen-address", "localhost:2109", "The REST server listen address in the format of host:port")
 	rpsLimit   = flag.Int("mrps", 10, "Max-Requests-Per-Seconds: define the throttle limit in requests per seconds")
 )
 
+// loadSettings load the settings from flags and env vars. Env vars have priority over flags
+func loadSettings() {
+	flag.Parse()
+	if val := os.Getenv("GRPC_SERVER_ADDRESS"); val != "" {
+		serverAddr = &val
+	}
+	if val := os.Getenv("LISTEN_ADDRESS"); val != "" {
+		listenAddr = &val
+	}
+	if val := os.Getenv("MRPS"); val != "" {
+		l, err := strconv.Atoi(val)
+		if err != nil {
+			log.Fatalln("invalid int value for MRPS")
+		}
+		rpsLimit = &l
+	}
+
+}
+
+// openGRPCConnection
 func openGRPCConnection(addr string) (conn *grpc.ClientConn, err error) {
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
+		grpc.WithTimeout(time.Duration(3) * time.Second),
 	}
 
 	conn, err = grpc.Dial(addr, opts...)
@@ -46,7 +69,8 @@ type Runtime struct {
 }
 
 func main() {
-	flag.Parse()
+	loadSettings()
+
 	// setup server
 	e := echo.New()
 	e.Use(middleware.Logger())
