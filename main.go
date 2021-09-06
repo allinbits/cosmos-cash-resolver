@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -101,6 +102,11 @@ func main() {
 
 	e.GET("/identifier/:did", func(c echo.Context) error {
 		did := c.Param("did")
+		// decode the paramater
+		did, err = url.QueryUnescape(did)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{})
+		}
 		accept := strings.Split(c.Request().Header.Get("accept"), ";")[0]
 		opt := resolver.ResolutionOption{Accept: accept}
 		rr := resolver.ResolveRepresentation(conn, did, opt)
