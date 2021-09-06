@@ -13,10 +13,18 @@ Usage of cosmos-cash-resolver:
   -grpc-server string
     	The target grpc server address in the format of host:port (default "localhost:9090")
   -listen string
-    	The REST server listen address in the format of host:port (default "localhost:2109")
+    	The REST server listen address in the format of host:port (default "0.0.0.0:2109")
   -mrps int
     	Max-Requests-Per-Seconds: define the throttle limit in requests per seconds (default 10)
 ```
+
+### Configuration
+
+The resolver can be also configured using environment variables:
+
+- `GRPC_SERVER_ADDRESS` - target grpc server address in the format of host:port
+- `LISTEN` - listen address in the format of host:port 
+- `MRPS` - max requests per seconds, define the throttle limit in requests per seconds
 
 
 ### Universal resolver driver 

@@ -25,7 +25,7 @@ const (
 
 var (
 	serverAddr = flag.String("grpc-server-address", "localhost:9090", "The target grpc server address in the format of host:port")
-	listenAddr = flag.String("listen-address", "localhost:2109", "The REST server listen address in the format of host:port")
+	listenAddr = flag.String("listen-address", "0.0.0.0:2109", "The REST server listen address in the format of host:port")
 	rpsLimit   = flag.Int("mrps", 10, "Max-Requests-Per-Seconds: define the throttle limit in requests per seconds")
 )
 
