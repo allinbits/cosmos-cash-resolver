@@ -26,10 +26,9 @@ const (
 )
 
 var (
-	serverAddr     = flag.String("grpc-server-address", "localhost:9090", "The target grpc server address in the format of host:port")
-	listenAddr     = flag.String("listen-address", "0.0.0.0:2109", "The REST server listen address in the format of host:port")
-	rpsLimit       = flag.Int("mrps", 10, "Max-Requests-Per-Seconds: define the throttle limit in requests per seconds")
-	legacyDIDRules = flag.Bool("legacy-format", false, "Apply legacy format to DID document content (false by default)")
+	serverAddr = flag.String("grpc-server-address", "localhost:9090", "The target grpc server address in the format of host:port")
+	listenAddr = flag.String("listen-address", "0.0.0.0:2109", "The REST server listen address in the format of host:port")
+	rpsLimit   = flag.Int("mrps", 10, "Max-Requests-Per-Seconds: define the throttle limit in requests per seconds")
 )
 
 // loadSettings load the settings from flags and env vars. Env vars have priority over flags
@@ -48,14 +47,6 @@ func loadSettings() {
 		}
 		rpsLimit = &l
 	}
-	if val := os.Getenv("LEGACY_FORMAT"); val != "" {
-		l, err := strconv.ParseBool(val)
-		if err != nil {
-			log.Fatalln("invalid int value for MRPS")
-		}
-		legacyDIDRules = &l
-	}
-
 }
 
 // openGRPCConnection
@@ -130,27 +121,56 @@ func main() {
 			"methodSpecificId": strings.TrimPrefix(rr.Document.Id, DidPrefix),
 		}
 
+		// track the resolution
+		atomic.AddUint64(&rt.resolves, 1)
+		c.Response().Header().Set(echo.HeaderContentType, didLDJson)
+
+		return c.JSON(http.StatusOK, rr)
+	})
+
+	e.GET("/identifier/aries/:did", func(c echo.Context) error {
+		did := c.Param("did")
+		// decode the paramater
+		did, err = url.QueryUnescape(did)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{})
+		}
+		accept := strings.Split(c.Request().Header.Get("accept"), ";")[0]
+		opt := resolver.ResolutionOption{Accept: accept}
+		rr := resolver.ResolveRepresentation(conn, did, opt)
+
+		// add universal resolver specific data:
+		rr.ResolutionMetadata.DidProperties = map[string]string{
+			"method":           "cosmos",
+			"methodSpecificId": strings.TrimPrefix(rr.Document.Id, DidPrefix),
+		}
+
 		// this will replace a did document verification material formatted in multibase to hex
-		if *legacyDIDRules {
-			for i, vm := range rr.Document.VerificationMethod {
-				if material, ok := vm.VerificationMaterial.(*types.VerificationMethod_PublicKeyMyltibase); ok {
-					if material.PublicKeyMyltibase[0:1] != "F" {
-						continue
-					}
-					vmHex := &types.VerificationMethod_PublicKeyHex{
-						PublicKeyHex: material.PublicKeyMyltibase[1:],
-					}
-					rr.Document.VerificationMethod[i].VerificationMaterial = vmHex
+		for i, vm := range rr.Document.VerificationMethod {
+			if material, ok := vm.VerificationMaterial.(*types.VerificationMethod_PublicKeyMyltibase); ok {
+				if material.PublicKeyMyltibase[0:1] != "F" {
+					continue
 				}
+				vmHex := &types.VerificationMethod_PublicKeyHex{
+					PublicKeyHex: material.PublicKeyMyltibase[1:],
+				}
+				rr.Document.VerificationMethod[i].VerificationMaterial = vmHex
 			}
+		}
+
+		result := map[string]interface{}{
+			"didDocument": resolver.AriesDidDocument{
+				DidDocument: rr.Document,
+				Created:     rr.Metadata.Created,
+				Updated:     rr.Metadata.Updated,
+			},
 		}
 
 		// track the resolution
 		atomic.AddUint64(&rt.resolves, 1)
 
 		c.Response().Header().Set(echo.HeaderContentType, didLDJson)
-
-		return c.JSON(http.StatusOK, rr)
+		return c.JSON(http.StatusOK, result)
 	})
 
 	e.GET("/", func(c echo.Context) error {
