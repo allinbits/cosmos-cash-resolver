@@ -69,6 +69,10 @@ type Runtime struct {
 	startTime time.Time
 }
 
+const (
+	didLDJson = "application/did+ld+json"
+)
+
 func main() {
 	loadSettings()
 
@@ -119,6 +123,8 @@ func main() {
 
 		// track the resolution
 		atomic.AddUint64(&rt.resolves, 1)
+
+		c.Response().Header().Set(echo.HeaderContentType, didLDJson)
 
 		return c.JSON(http.StatusOK, rr)
 	})
